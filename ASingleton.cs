@@ -65,6 +65,8 @@ namespace RMX
 		public abstract TextAsset Database { get; }
 		public abstract bool IsDebugging(string feature);
 		public abstract float MaxDisplayTime { get;}
+
+
 	}
 
 	public static class Singletons {
@@ -224,9 +226,8 @@ namespace RMX
 						Destroy(this);
 					}
 				}
-				if (Bugger.WillLog(Testing.Singletons, message))
+				if (Bugger.WillLog (Testing.Singletons, message))
 					Debug.Log (Bugger.Last);
-
 				_isInitialized = true;
 			}
 

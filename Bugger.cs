@@ -15,106 +15,161 @@ using System;
 namespace RMX
 {
 
-	struct LateLog {
-		public LateLog(string feature, string message) {
-			this.feature = feature;
-			this.message = message;
-		}
-		public string feature;
-		public string message;
+	public class Testing {
+		
+		public static string Misc = "Misc";
+		public static string GameCenter = "GameCenter";
+		public static string Achievements = "Achievements";
+		public static string Exceptions = "Exceptions";
+		
+		public static string Singletons = "Singletons";
+		public static string Patches = "Patches";
+		public static string Database = "Database";
+		public static string EventCenter = "EventCenter";
 	}
+
 
 	public class Bugger : Singletons.ASingleton<Bugger>
 	{
+		public struct Log {
+			public Log(string feature, string message) {
+				this.feature = feature;
+				this.message = message;
+			}
+			public string feature;
+			public string message;
+
+			public bool isEmpty {
+				get {
+					return this.message == "" || this.message == null;
+				}
+			}
+
+			public bool isActive {
+				get {
+					return false;
+				}
+			}
+
+			private string color {
+				get {
+					if (this.feature == Testing.Exceptions)
+						return "red";
+					else if (this.feature == Testing.GameCenter)
+						return "yellow";
+					else if (this.feature == Testing.Patches)
+						return "green";
+					else
+						return "blue";
+				}	
+			}
+			
+			
 		
+			public override string ToString ()
+			{
+				string header = "<color=" + color + ">" + this.feature + ": </color>\n";
+				var result = TextFormatter.Format( header + this.message);
+				if (Singletons.SettingsInitialized && Singletons.Settings.PrintToScreen)
+					Bugger.current.Queue.Add(result);
+				return result;
+			}
+		}
 
 		public List<string> Queue = new List<string>();
-//		public bool[] f = new bool[(int) Testing.__NULL__];
-
-		private static List<LateLog> _logOnLoad = new List<LateLog> ();
+		private static List<Log> _lateLogs = new List<Log> ();
 	
 		bool _setupComplete = false;
 		protected override bool SetupComplete {
 			get {
-				return _setupComplete ;
+				return _setupComplete;
 			}
 		}
 
 
 		void Start() {
+			if (!Singletons.SettingsInitialized)
+				Debug.LogError ("Setting MUST be initialized before Bugger");
 			_setupComplete = true;
-			foreach (LateLog log in _logOnLoad) {
+
+			foreach (Log log in _lateLogs) {
 				try {
-					if (Bugger.WillLog(log.feature, " _LATE_ " + log.message))
-						Debug.Log(Bugger.Last);
+					if (settings.IsDebugging(log.feature)) {
+						var message = TextFormatter.Format( log.feature + ": _LATE_ " + log.message);
+						Debug.Log(message);
+					}
 				} catch (Exception e) {
 					Debug.LogWarning(e.Message);
 				}
 			}
-			_logOnLoad.Clear ();
-			_logOnLoad = null;
+			_lateLogs.Clear ();
+			_lateLogs = null;
 
 		}
 
 
 
-		public static bool WillTest(string feature) {
-			if (IsInitialized && Singletons.SettingsInitialized)
-				return Singletons.Settings.IsDebugging (feature);
-			else 
-				return false;
-		}
 
-		public static DebugLog Last {
+		Log _log;
+		public static string Last {
 			get {
-				return IsInitialized ? log : null;
+				if (IsInitialized)
+					if (!current._log.isEmpty)
+						return current._log.ToString();
+					else
+						throw new NullReferenceException ("_log should not be null!");
+				else
+					throw new Exception ("Bugger must be initialized before accessing Last log.");
 			}
 		}
 
-	 public static void AddLateLog(string feature, string message) {
-			if (_logOnLoad == null)
+		 static void AddLateLog(string feature, string message) {
+			if (_lateLogs == null)
 				throw new Exception ("Late Log Was Added too Late! - " + feature + "\n " + message);
 			else		
-				_logOnLoad.Add (new LateLog (feature, message));
-//			} else if (IsInitialized) {
-//				Debug.LogWarning ("Tried to add late log but _logOnLoad had already been destroyed:\n" + feature.ToString () + ": " + message); 
-//			} else {
-//				_logOnLoad = new List<LateLog> ();
-//			}
+				_lateLogs.Add (new Log (feature, message));
+
 		}
 
-		public static DebugLog StartNewLog(string feature) {
+		public static Log StartNewLog(string feature) {
 			return StartNewLog (feature, "");
 		}
 
-		public static DebugLog StartNewLog(string feature, string message) {
-			return new DebugLog (feature, message);
+		public static Log StartNewLog(string feature, string message) {
+			if (IsInitialized) {
+				return new Log (feature, message);
+			} else
+				throw new Exception ("Bugger must be initialized before StartNewLog(string feature, string message). Log is: \n" + feature + ": " + message);
+
 		}
 	
 
 
 		public static bool WillLog(string feature, string message) {
-			if (IsInitialized)
-				return log.Set (feature, message);
-			else if (Singletons.Settings != null && !Singletons.Settings.IsDebugging (feature)) 
-				return false;
-			else 
+			if (IsInitialized && Singletons.Settings != null) {
+				if (Singletons.Settings.IsDebugging (feature)) {
+					current._log = new Log (feature, message);
+					return true;
+				} else {
+					return false;
+				}
+			} else 
 				AddLateLog (feature, message);
 			return false;
 		}
 
 
-		static DebugLog log = new DebugLog();
+
 
 		private bool timesUp {
 			get{ 
-				return Singletons.Settings != null && settings.PrintToScreen && Queue.Count > 0 && Time.fixedTime - _startedAt > Singletons.Settings.MaxDisplayTime;
+				return settings != null && settings.PrintToScreen && Queue.Count > 0 && Time.fixedTime - _startedAt > settings.MaxDisplayTime;
 			}
 		}
 
 		private int timeRemaining {
 			get {
-				return (int) (Singletons.Settings.MaxDisplayTime - (Time.fixedTime - _startedAt));
+				return settings != null ? (int) (settings.MaxDisplayTime - (Time.fixedTime - _startedAt)) : 1;
 			}
 		}
 
@@ -136,7 +191,7 @@ namespace RMX
 		}
 
 		void OnGUI () {
-			if (Singletons.Settings != null && settings.PrintToScreen && Queue.Count > 0) {
+			if (settings != null && settings.PrintToScreen && Queue.Count > 0) {
 				var text = timeRemaining + " – " + Queue[0];
 				GUIStyle style = new GUIStyle ();
 //				style.fontSize = 50;

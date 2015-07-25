@@ -1,106 +1,102 @@
 ﻿using UnityEngine;
 
 
-namespace RMX {
+namespace RMX.Deprecated {
 
-	public class Testing {
 
-		public static string Misc = "Misc";
-		public static string GameCenter = "GameCenter";
-		public static string Achievements = "Achievements";
-		public static string Exceptions = "Exceptions";
-
-		public static string Singletons = "Singletons";
-		public static string Patches = "Patches";
-		public static string Database = "Database";
-		public static string EventCenter = "EventCenter";
-	}
-
-public class DebugLog {
-	private string log = "";
-	
-	
-	public DebugLog(string feature, string message) {
-		this.feature = feature;
-		this.message = message;
-	}
-	
-	
-	public DebugLog(string feature) {
-		this.feature = feature;
-	}
-	
-	public DebugLog() {
-		this.feature = Testing.Misc;
-	}
-	
-	public string message {
-		get {
-			return log;
-		} set {
-			log = Bugger.WillTest(this.feature) ? value : "";
-		}
-	}
-	
-	public bool Set(string feature, string message) {
-		if (Singletons.Settings.IsDebugging(feature)) {
+	 class DebugLog {
+		private string log = "";
+		
+		
+		public DebugLog(string feature, string message) {
+//			if (!Singletons.SettingsInitialized || !Bugger.IsInitialized)
+				throw new System.Exception ("Settings and DeBugger must be initialized before a DebugLog object is created. Log is: \n" + feature + ": " + message);
 			this.feature = feature;
 			this.message = message;
-			return true;
 		}
-		return false;
-	}
-	
-	public string feature = Testing.Misc;
-	
-	public void Clear() {
-		log = "";
-	}
-	
-	public bool isActive {
-		get {
-			return Bugger.WillTest(this.feature);
-		}
-	}
-	public void Start(string feature) {
-		this.feature = feature;
-		this.log = "";
-	}
-	
-	private string color {
-		get {
-			if (this.feature == Testing.Exceptions)
-				return "red";
-			else if (this.feature == Testing.GameCenter)
-				return "yellow";
-			else if (this.feature == Testing.Patches)
-				return "green";
-			else
-				return "blue";
-		}	
-	}
-	
-	
-	
-	private string ProcessLog() {
-		string header = "<color=" + color + ">" + this.feature + ": </color>\n";
 		
-		return header + TextFormatter.Format (this.message);
-	}
-
-	public override string ToString() {
-		string log;// = this.log;
-		if (isActive) {
-			log = ProcessLog();
-			if (!Bugger.IsInitialized)
-					Bugger.AddLateLog(feature,message);
-			else if (Singletons.SettingsInitialized && Singletons.Settings.PrintToScreen) 
-				Bugger.current.AddToQueue(log);
-		} else {
-			log = null;
+		
+		public DebugLog(string feature) {
+//			if (!Singletons.SettingsInitialized || !Bugger.IsInitialized)
+				throw new System.Exception ("Settings and DeBugger must be initialized before a DebugLog object is created. Log is for: " + feature);
+			this.feature = feature;
 		}
-		Clear ();
-		return log;
+		
+		public DebugLog() {
+//			if (!Singletons.SettingsInitialized || !Bugger.IsInitialized)
+				throw new System.Exception ("Settings and DeBugger must be initialized before a DebugLog object is created");
+			this.feature = Testing.Misc;
+		}
+		
+		public string message {
+			get {
+				return log;
+			} set {
+				log = value;
+			}
+		}
+
+		public bool Set(string feature, string message) {
+			if (Singletons.Settings.IsDebugging(feature)) {
+				this.feature = feature;
+				this.message = message;
+				return true;
+			}
+			return false;
+		}
+		
+		public string feature = Testing.Misc;
+		
+		public void Clear() {
+			log = "";
+		}
+		
+		public bool isActive {
+			get {
+				if (Singletons.Settings == null) 
+					throw new UnityException("Settings should be initialized before using DebubLog()");
+				else
+					return Singletons.Settings.IsDebugging(this.feature);
+			}
+		}
+
+		public void Start(string feature) {
+			this.feature = feature;
+			this.log = "";
+		}
+		
+		private string color {
+			get {
+				if (this.feature == Testing.Exceptions)
+					return "red";
+				else if (this.feature == Testing.GameCenter)
+					return "yellow";
+				else if (this.feature == Testing.Patches)
+					return "green";
+				else
+					return "blue";
+			}	
+		}
+		
+		
+		
+		private string ProcessLog() {
+			string header = "<color=" + color + ">" + this.feature + ": </color>\n";
+			
+			return header + TextFormatter.Format (this.message);
+		}
+
+		public override string ToString() {
+			string log;// = this.log;
+			if (isActive) {
+				log = ProcessLog();
+				if (Singletons.Settings.PrintToScreen) 
+					Bugger.current.AddToQueue(log);
+			} else {
+				log = null;
+			}
+			Clear ();
+			return log;
+		}
 	}
-}
 }
